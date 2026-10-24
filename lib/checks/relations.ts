@@ -43,10 +43,13 @@ export function pairsPrompt(pairs: Pair[]): string {
     .join("\n\n");
 }
 
-// Returns updated decisions (statuses) + decision-vs-decision contradictions.
 export function applyRelations(decisions: Decision[], pairs: Pair[], relations: Relation[]) {
   const byId = new Map(decisions.map((d) => [d.id, { ...d }]));
-  const contradictions: Contradiction[] = [];
+
+  // If one later decision "contradicts" several earlier ones, keep only the MOST RECENT earlier one.
+  // The AI sometimes adds a weaker, unrelated pair (e.g. "Firebase auth" vs "hash passwords").
+  const bestPerLater = new Map<string, { p: Pair; r: Relation }>();
+
   for (const r of relations) {
     const p = pairs[r.pair];
     if (!p) continue;
@@ -55,20 +58,26 @@ export function applyRelations(decisions: Decision[], pairs: Pair[], relations: 
       a.status = "superseded";
       a.supersededBy = p.b.id;
     } else if (r.relation === "contradicts") {
-      byId.get(p.a.id)!.status = "contradicted";
-      byId.get(p.b.id)!.status = "contradicted";
-      contradictions.push({
-        id: `dec-${p.a.id}-${p.b.id}`,
-        decisionId: p.b.id,
-        otherDecisionId: p.a.id,
-        kind: "decision",
-        explanation: r.reason,
-        evidence: [
-          { label: `Earlier decision (${p.a.date}, ${p.a.who})`, snippet: p.a.what },
-          { label: `Later decision (${p.b.date}, ${p.b.who})`, snippet: p.b.what },
-        ],
-      });
+      const current = bestPerLater.get(p.b.id);
+      if (!current || p.a.date > current.p.a.date) bestPerLater.set(p.b.id, { p, r });
     }
+  }
+
+  const contradictions: Contradiction[] = [];
+  for (const { p, r } of bestPerLater.values()) {
+    byId.get(p.a.id)!.status = "contradicted";
+    byId.get(p.b.id)!.status = "contradicted";
+    contradictions.push({
+      id: `dec-${p.a.id}-${p.b.id}`,
+      decisionId: p.b.id,
+      otherDecisionId: p.a.id,
+      kind: "decision",
+      explanation: r.reason,
+      evidence: [
+        { label: `Earlier decision (${p.a.date}, ${p.a.who})`, snippet: p.a.what },
+        { label: `Later decision (${p.b.date}, ${p.b.who})`, snippet: p.b.what },
+      ],
+    });
   }
   return { decisions: [...byId.values()], contradictions };
 }

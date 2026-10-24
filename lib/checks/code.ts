@@ -39,7 +39,12 @@ export function checkCode(decisions: Decision[], pkg: Pkg, docs: SourceDoc[] = [
   const out: Contradiction[] = [];
 
   for (const d of decisions) {
-    if (d.status === "superseded") continue; // the team already changed its mind on purpose
+        // Skip only if the team RECORDED a switch to another technology (e.g. "moving auth to Supabase").
+    // If the newer decision names no technology, the package change is still unexplained → keep checking.
+    if (d.status === "superseded") {
+      const newer = decisions.find((x) => x.id === d.supersededBy);
+      if (newer?.entities.some((e) => techFor(e))) continue;
+    }
     const seen = new Set<string>();
     for (const entity of d.entities) {
       const tech = techFor(entity);

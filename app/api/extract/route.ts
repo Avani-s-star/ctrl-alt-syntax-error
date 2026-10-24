@@ -19,7 +19,14 @@ export async function POST(req: Request) {
       const raw = await askLLM(EXTRACT_SYSTEM, `Document "${doc.title}" (${doc.type}, dated ${doc.date}, by ${doc.author ?? "unknown"}):\n\n${doc.text}`);
       items = parseJSON<Raw[]>(raw, []);
     } catch (e) {
-      return Response.json({ error: (e as Error).message }, { status: 500 });
+      // AI unavailable even after retries. For the built-in demo, use the backup answers so the demo never dies.
+      const backup = MOCK_DECISIONS[doc.id];
+      if (backup && !doc.url) {
+        console.error("extract failed, using backup:", (e as Error).message);
+        items = backup;
+      } else {
+        return Response.json({ error: (e as Error).message }, { status: 500 });
+      }
     }
   }
 

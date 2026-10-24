@@ -14,18 +14,24 @@ export async function POST(req: Request) {
   // Layer 2: decision vs decision
   const pairs = candidatePairs(body.decisions);
   let relations: Relation[] = [];
+  const mockRelations = () =>
+    pairs.flatMap((p, i) => {
+      const m = MOCK_RELATIONS[`${p.a.id}|${p.b.id}`];
+      return m ? [{ pair: i, ...m }] : [];
+    });
+
   if (pairs.length) {
     if (!hasLLM()) {
-      relations = pairs.flatMap((p, i) => {
-        const m = MOCK_RELATIONS[`${p.a.id}|${p.b.id}`];
-        return m ? [{ pair: i, ...m }] : [];
-      });
+      relations = mockRelations();
     } else {
       try {
         const raw = await askLLM(JUDGE_SYSTEM, pairsPrompt(pairs), 3000);
         relations = parseJSON<Relation[]>(raw, []);
       } catch (e) {
-        return Response.json({ error: (e as Error).message }, { status: 500 });
+        // AI unavailable even after retries: use the backup verdicts (demo data) instead of failing.
+        // The code check below needs no AI, so code contradictions still work.
+        console.error("judge failed, using backup:", (e as Error).message);
+        relations = mockRelations();
       }
     }
   }

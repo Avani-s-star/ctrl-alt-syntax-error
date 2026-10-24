@@ -44,6 +44,8 @@ Rules:
 - Use "supersedes" only when the change is explicitly supported by the provided text.
 - If both decisions can coexist, use "unrelated".
 - Do not infer missing facts or invent context.
+- If A is a general rule or policy (e.g. "all X must Y") and B does something for one case that breaks that rule without saying the rule itself changed, that is "contradicts", NOT "supersedes".
+- "supersedes" requires B to replace A for the SAME scope (e.g. "we're replacing CSS Modules with Tailwind", "the deadline moves from Oct 1 to Nov 15").
 
 Return ONLY a valid JSON array, with no markdown fences or extra text. Each item must follow this structure:
 [{"pair": number, "relation": "supersedes" | "contradicts" | "unrelated", "reason": "one short sentence"}]

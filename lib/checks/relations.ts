@@ -21,7 +21,7 @@ function topicKeys(d: Decision): Set<string> {
 }
 
 // Pairs of decisions that share a topic, older first. Capped so one LLM call can judge them all.
-export function candidatePairs(decisions: Decision[], max = 25): Pair[] {
+export function candidatePairs(decisions: Decision[], max = 60): Pair[] {
   const sorted = [...decisions].sort((x, y) => x.date.localeCompare(y.date));
   const keys = sorted.map(topicKeys);
   const pairs: Pair[] = [];

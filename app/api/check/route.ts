@@ -8,6 +8,9 @@ import { checkCode } from "@/lib/checks/code";
 import { MOCK_RELATIONS } from "@/data/mock";
 import type { Decision, ProjectSource, SourceDoc } from "@/types/schema";
 
+// Gemini can be slow when busy; allow up to 60s instead of the platform default.
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
   const body: { decisions: Decision[]; docs: SourceDoc[]; pkg: ProjectSource["pkg"]; pkgUrl?: string } = await req.json();
 

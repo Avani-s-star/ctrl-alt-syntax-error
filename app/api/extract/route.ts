@@ -5,6 +5,9 @@ import { EXTRACT_SYSTEM } from "@/lib/ai/prompts";
 import { MOCK_DECISIONS } from "@/data/mock";
 import type { Decision, SourceDoc } from "@/types/schema";
 
+// Gemini can be slow when busy; allow up to 60s instead of the platform default.
+export const maxDuration = 60;
+
 type Raw = Omit<Decision, "id" | "sourceId" | "status">;
 
 export async function POST(req: Request) {

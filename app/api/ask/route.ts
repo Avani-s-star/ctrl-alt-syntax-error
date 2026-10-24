@@ -4,6 +4,9 @@ import { askLLM, hasLLM } from "@/lib/ai/llm";
 import { ASK_SYSTEM } from "@/lib/ai/prompts";
 import type { Contradiction, Decision, SourceDoc } from "@/types/schema";
 
+// Gemini can be slow when busy; allow up to 60s instead of the platform default.
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
   const { question, decisions, contradictions, docs }: {
     question: string; decisions: Decision[]; contradictions: Contradiction[]; docs: SourceDoc[];

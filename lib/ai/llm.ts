@@ -10,7 +10,7 @@ const MODELS = (process.env.LLM_MODELS || process.env.LLM_MODEL || "gemini-2.5-f
   .map((m) => m.trim())
   .filter(Boolean);
 
-const RETRIES_PER_MODEL = 2;
+const RETRIES_PER_MODEL = 1; // keep total time well under the 60s limit
 
 export function hasLLM() {
   return Boolean(process.env.GEMINI_API_KEY);

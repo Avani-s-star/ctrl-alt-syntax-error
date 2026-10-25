@@ -73,3 +73,17 @@ export function reverseDecision(tasks: Task[], decision: Decision, reworkPct: nu
     after: { total: after.total, critical: after.critical, load: workload(changed) },
   };
 }
+export function projectDays(tasks: { id: string; est: number; deps: string[] }[]): number {
+  const finish: Record<string, number> = {};
+
+  const done = (id: string): number => {
+    if (finish[id] !== undefined) return finish[id];
+
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return 0;
+
+    return (finish[id] = Math.max(0, ...task.deps.map(done)) + task.est);
+  };
+
+  return Math.max(0, ...tasks.map((t) => done(t.id)));
+}

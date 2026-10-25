@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { mockMemory } from "@/lib/client/mock";
+import { buildMemory } from "@/lib/client/build";
 import { Squiggle, StepArt } from "@/components/Doodles";
 
 /* ---------- schedule engine: forward pass, backward pass, slack ---------- */
@@ -242,13 +242,29 @@ export default function Home() {
     damping: 20,
   };
 
-  function openDemo() {
-    localStorage.setItem(
-      "memory",
-      JSON.stringify(mockMemory)
-    );
+  const [repo, setRepo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [log, setLog] = useState<string[]>([]);
+  const [error, setError] = useState("");
 
-    router.push("/alerts");
+  // Runs the REAL pipeline: read notes/commits → AI extracts decisions → check → save → show alerts.
+  async function openDemo(useRepo?: string) {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    setLog([]);
+    document.getElementById("analyze")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    try {
+      await buildMemory({
+        repo: useRepo || undefined,
+        onProgress: (msg) => setLog((l) => [...l, msg]),
+      });
+      router.push("/alerts");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -290,7 +306,7 @@ export default function Home() {
 
           <div className="ml-auto flex items-center gap-4 text-sm">
             <button
-              onClick={openDemo}
+              onClick={() => openDemo()}
               className="rounded-lg bg-[#073358] px-4 py-2 font-medium text-white transition hover:bg-[#001F3E]"
             >
               Get started
@@ -350,7 +366,7 @@ export default function Home() {
               whileTap={{
                 scale: 0.98,
               }}
-              onClick={openDemo}
+              onClick={() => openDemo()}
               className="rounded-lg bg-[#073358] px-6 py-3 font-medium text-white hover:bg-[#001F3E]"
             >
               Explore the demo
@@ -368,6 +384,46 @@ export default function Home() {
             >
               See how it works
             </motion.a>
+          </div>
+
+          {/* ANALYZE A REAL REPO */}
+          <div
+            id="analyze"
+            className="mt-6 max-w-md rounded-xl border border-[#D9E0E6] bg-white/70 p-4 backdrop-blur-sm"
+          >
+            <p className="text-sm font-medium text-[#073358]">Analyze your own GitHub repo</p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (repo.trim()) openDemo(repo.trim());
+              }}
+              className="mt-2 flex gap-2"
+            >
+              <input
+                value={repo}
+                onChange={(e) => setRepo(e.target.value)}
+                placeholder="github.com/owner/repo"
+                className="min-w-0 flex-1 rounded-lg border border-[#C9D2DC] bg-white px-3 py-2 text-sm text-[#172234]"
+              />
+              <button
+                type="submit"
+                disabled={busy || !repo.trim()}
+                className="rounded-lg bg-[#B85A3A] px-4 py-2 text-sm font-medium text-white hover:bg-[#8B4937] disabled:opacity-40"
+              >
+                Analyze
+              </button>
+            </form>
+            {(busy || log.length > 0) && (
+              <div className="mt-3 max-h-48 overflow-y-auto font-mono text-xs leading-relaxed text-[#526071]">
+                {log.map((l, i) => (
+                  <div key={i} className={i === log.length - 1 && busy ? "animate-pulse text-[#073358]" : ""}>
+                    {i === log.length - 1 && !busy ? "✓ " : "→ "}
+                    {l}
+                  </div>
+                ))}
+              </div>
+            )}
+            {error && <p className="mt-2 text-xs text-red-600">⚠ {error}</p>}
           </div>
         </div>
 
@@ -1260,7 +1316,7 @@ export default function Home() {
             whileTap={{
               scale: 0.98,
             }}
-            onClick={openDemo}
+            onClick={() => openDemo()}
             className="mt-8 rounded-lg bg-[#B85A3A] px-6 py-3 font-medium text-white hover:bg-[#8B4937]"
           >
             Start exploring

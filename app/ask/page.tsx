@@ -24,7 +24,7 @@ const STOP = new Set([
 ]);
 
 // Temporary answer builder.
-// TODO: replace with fetch("/api/ask") from Person 3.
+// Fallback used only if /api/ask fails.
 function localAnswer(q: string, memory: Memory): string {
   const lower = q.toLowerCase();
 
@@ -146,9 +146,22 @@ export default function Ask() {
     setQ("");
     setTyping(true);
 
-    await new Promise((r) => setTimeout(r, 900));
-
-    const answer = localAnswer(text, memory);
+    let answer: string;
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        body: JSON.stringify({
+          question: text,
+          decisions: memory.decisions,
+          contradictions: memory.contradictions,
+          docs: memory.docs,
+        }),
+      });
+      const data = await res.json();
+      answer = data.answer ?? localAnswer(text, memory);
+    } catch {
+      answer = localAnswer(text, memory); // AI unavailable → simple keyword answer
+    }
 
     setTyping(false);
     setMsgs((m) => [...m, { role: "ai", text: answer }]);

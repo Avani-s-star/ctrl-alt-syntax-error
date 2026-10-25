@@ -142,66 +142,42 @@ export default function Alerts() {
   >("all");
   const [toast, setToast] = useState("");
 
-  const rawAlerts =
-    (memory as any)?.alerts ??
-    (memory as any)?.decisions ??
-    [];
-
+  // Real results from the pipeline: one card per contradiction (not per decision).
   const alerts = useMemo(() => {
-    if (!Array.isArray(rawAlerts)) return [];
+    if (!memory) return [];
+    const byId = new Map(memory.decisions.map((d) => [d.id, d]));
+    const docTitle = (id?: string) => memory.docs.find((x) => x.id === id)?.title ?? id ?? "";
 
-    return rawAlerts.map((item: any, index: number) => ({
-      id: String(
-        item?.id ??
-          item?.key ??
-          `alert-${index}`
-      ),
-
-      title:
-        item?.title ??
-        item?.name ??
-        item?.decision ??
-        "Project decision needs review",
-
-      description:
-        item?.description ??
-        item?.reason ??
-        item?.summary ??
-        "A previous project decision may affect the current implementation.",
-
-      severity:
-        item?.severity === "high" ||
-        item?.severity === "low"
-          ? item.severity
-          : "medium",
-
-      evidence:
-        item?.evidence ??
-        item?.source ??
-        item?.context ??
-        "Previous project context",
-
-      difference:
-        item?.difference ??
-        item?.impact ??
-        "This may differ from the current implementation.",
-
-      fix:
-        item?.fix ??
-        item?.solution ??
-        item?.howToFix ??
-        "Review the original decision and update the implementation if needed.",
-
-      author:
-        item?.author ??
-        item?.owner ??
-        item?.user ??
-        "Team Memory",
-    }));
-  }, [rawAlerts]);
+    return memory.contradictions.map((c) => {
+      const d = byId.get(c.decisionId);
+      const [first, second, ...rest] = c.evidence;
+      const isCode = c.kind === "code";
+      return {
+        id: c.id,
+        title: isCode
+          ? "A recorded decision no longer matches the code"
+          : "Two team decisions contradict each other",
+        description: c.explanation,
+        severity: (isCode ? "high" : "medium") as "high" | "medium" | "low",
+        evidence: isCode
+          ? [second, ...rest].filter(Boolean).map((e) => `${e.label}: ${e.snippet}`).join("   •   ")
+          : `Source: ${docTitle(d?.sourceId)}`,
+        recorded: first ? `${first.snippet} (${first.label})` : "Previous team decision",
+        difference: second
+          ? isCode
+            ? `Code now uses: ${second.snippet}`
+            : `${second.snippet} (${second.label})`
+          : "This may differ from the current implementation.",
+        fix: isCode
+          ? `Either record a new decision explaining why the team switched, or bring the code back in line with: "${d?.what ?? first?.snippet}".`
+          : "Ask the people involved which decision stands, then record it so the team stops getting conflicting guidance.",
+        author: d?.who ?? "Team Memory",
+      };
+    });
+  }, [memory]);
 
   const displayAlerts =
-    alerts.length > 0
+    memory
       ? alerts
       : [
           {
@@ -762,7 +738,7 @@ export default function Alerts() {
                         </div>
 
                         <p className="text-[13px] leading-5 text-[#172234]">
-                          Previous team decision
+                          {"recorded" in alert ? alert.recorded : "Previous team decision"}
                         </p>
                       </div>
 
